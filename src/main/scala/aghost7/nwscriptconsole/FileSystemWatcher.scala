@@ -11,12 +11,12 @@ import util._
  *  in the console.
  */
 class FileSystemWatcher(
-		dirName: String, 
+		val dirName: String, 
 		compiler: CompilerProcessor, 
 		initCompileAll: Boolean) 
 		extends Runnable 
 		with IncludeTracker {
-	
+
 	private val fs = FileSystems.getDefault()
 	private val watch = fs.newWatchService()
 	private val dir = fs.getPath(dirName)
@@ -33,8 +33,10 @@ class FileSystemWatcher(
 		Console.flush()
 	}
 	
+	/** Called if file is an nss file to process changes.
+	 */
 	def processNssChange(kind: WatchEvent.Kind[_], dirPath: String) {
-		loadDirectoryNssFiles(new java.io.File(dirName))
+		
 		//msg("file changed: " + dirPath)
 		val (isInclude, absPath) = include(dirPath)
 		if(isInclude){
@@ -53,9 +55,14 @@ class FileSystemWatcher(
 		tick
 	}
 	
+	/** Watcher thread loop
+	 */
 	def run: Unit = {
 		try {
 			if(initCompileAll){
+				
+				try { loadDirectoryNssFiles(new java.io.File(dirName)) }
+				catch { case _: Throwable => println("File just shat the bed.") }
 				msg("compiling all.")
 				compiler.compileAll(dirName)
 				tick

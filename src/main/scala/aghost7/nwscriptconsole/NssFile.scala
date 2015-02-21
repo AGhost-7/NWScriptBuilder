@@ -28,18 +28,18 @@ class NssFile (
  *  Application would have some pretty poor performance otherwise. 
  */
 object SkippableLine {
-	def unapply(line: String): Option[String] = {
+	def apply(line: String): Boolean = {
 		for(c <- line){
 			// Enforce compilation to tableswitch/lookupswitch
 			(c: @switch) match {
 				// just keep going...
 				case ' ' | '\t' =>
 				// could be what we're looking for so we can't skip this line
-				case 'v' | 'i' | '#' => return None 
-				case _ => return Some(line)
+				case 'v' | 'i' | '#' => return false
+				case _ => return true
 			}
 		}
-		None
+		false
 	}
 }
 object MainLine {
@@ -70,7 +70,7 @@ object NssFile {
 				incs: List[String] = Nil):NssFile = lines match {
 			case Nil =>
 				new NssFile(name, path, isMain, isCond, incs)
-			case SkippableLine(line) :: rest =>
+			case line :: rest if(SkippableLine(line)) =>
 				process(rest, isMain, isCond, incs)
 			case MainLine(matches) :: rest =>
 				process(rest, true, isCond, incs)

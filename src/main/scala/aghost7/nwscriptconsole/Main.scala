@@ -11,7 +11,7 @@ import scala.collection.JavaConversions._
 object Path {
 	def unapply(p: String): Option[String] = 
 		if(p.head == '\"' && p.last == '\"')
-			Some(p.tail.drop(1))
+			Some(p.tail.dropRight(1))
 		else 
 			Some(p)
 }
@@ -25,7 +25,9 @@ object Main extends App {
 	println("Initializing...")
 	
 	// Process configuration file...
-	val conf = ConfigFactory.load()
+	val conf = 
+		if(args.isEmpty) ConfigFactory.load() 
+		else ConfigFactory.load(args(0))
 	val compiler = CompilerProcessor.fromConfig(conf.getConfig("compiler"))
 	val compAll = conf.getBoolean("watchers.startup.full-compile")
 	
@@ -54,6 +56,9 @@ object Main extends App {
 				listen.purge
 				println("Watch succesfully removed")
 			}
+			processArgs(rest)
+		case "all" :: rest =>
+			watchers.values.foreach { w => compiler.compileAll(w.dirName) }
 			processArgs(rest)
 		case "exit" :: rest =>
 			watchers.values.foreach { _.purge }
