@@ -1,10 +1,11 @@
-package aghost7.nwscriptconsole
+package aghost7.nwscriptbuilder
 
 import java.nio.file._
 import Console._
 import com.typesafe.config._
 import scala.collection.mutable.{Map => MMap}
 import scala.collection.JavaConversions._
+import java.io.File
 
 /** Extracts full path string from arguments in pattern match.
  */
@@ -25,9 +26,12 @@ object Main extends App {
 	println("Initializing...")
 	
 	// Process configuration file...
-	val conf = 
-		if(args.isEmpty) ConfigFactory.load() 
-		else ConfigFactory.load(args(0))
+	val conf = {
+		val userConf = ConfigFactory.parseFile(new File("application.conf"))
+		ConfigFactory.load(userConf) 
+		//userConf
+	}	
+	
 	val compiler = CompilerProcessor.fromConfig(conf.getConfig("compiler"))
 	val compAll = conf.getBoolean("watchers.startup.full-compile")
 	
@@ -44,10 +48,18 @@ object Main extends App {
 			watchers.clear
 			processArgs(rest)
 		case "watch" :: Path(dir) :: rest =>
-			if(watchers.get(dir).isDefined)
+			if(watchers.get(dir).isDefined){
 				println("Watch is already active")
-			else
-				watchers += dir -> new FileSystemWatcher(dir, compiler, false)
+			} else {
+				val dirFile = new File(dir)
+				if(dirFile.exists) {
+					val path = dirFile.getAbsolutePath
+					watchers += dir -> new FileSystemWatcher(path, compiler, false)
+				} else {
+					println("target does not exist.")
+				}
+					
+			}
 			processArgs(rest)
 		case "remove" :: Path(dir) :: rest =>
 			watchers.remove(dir).fold[Unit] {
@@ -71,8 +83,8 @@ object Main extends App {
 	
 	val argPat = """(["][\\A-z0-9\/ ]+["])|([ ]?[\\A-z0-9\/-]+[ ])|([\\A-z0-9\/-]+)""".r
 	while(true){
-		print("> ")
-		flush()
+		//print("\n> ")
+		//flush()
 		val input = readLine
 		println("")
 		val consArgs = argPat.findAllMatchIn(input).map { _.toString.trim }

@@ -8,4 +8,5 @@ libraryDependencies ++= Seq(
 	"junit" % "junit" % "4.8.1" % "test"
 	)
 
-//fork in run := true
+mainClass := Some("aghost7.nwscriptbuilder.Main")
+	

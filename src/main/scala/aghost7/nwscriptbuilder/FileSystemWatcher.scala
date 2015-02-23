@@ -1,10 +1,10 @@
-package aghost7.nwscriptconsole
+package aghost7.nwscriptbuilder
 
 
 import java.nio.file._
 import java.nio.file.StandardWatchEventKinds._
 import java.lang.InterruptedException
-import util._
+import scala.collection.JavaConversions._
 
 
 /** Run watch logic on separate thread to allow user to input other arguments 
@@ -15,7 +15,7 @@ class FileSystemWatcher(
 		compiler: CompilerProcessor, 
 		initCompileAll: Boolean) 
 		extends Runnable 
-		with IncludeTracker {
+		with IncludeTracker{
 
 	private val fs = FileSystems.getDefault()
 	private val watch = fs.newWatchService()
@@ -26,8 +26,12 @@ class FileSystemWatcher(
 	
 	t.start()
 	
+	/** Sends a message to the user with the watcher's name
+	 */
 	def msg(s: String) = Console.println(s"\nWatcher ($dirName): $s")
 	
+	/** Leave a tick to "hint" user that they can type into the console.
+	 */
 	def tick = {
 		Console.print("> ")
 		Console.flush()
@@ -36,23 +40,17 @@ class FileSystemWatcher(
 	/** Called if file is an nss file to process changes.
 	 */
 	def processNssChange(kind: WatchEvent.Kind[_], dirPath: String) {
-		
-		//msg("file changed: " + dirPath)
 		val (isInclude, absPath) = include(dirPath)
 		if(isInclude){
 			// then I need to check which other files that were affected...
-			val recomp = dependees(absPath)
+			val recomp: List[NssFile] = dependees(absPath)
 			msg("compiling depending files")
-			recomp.foreach { file => 
-				compiler.compile(file)
-			}
+			compiler.compileList(dirName, recomp)
 		} else {
 			msg("compiling file: " + dirPath)
 			// we can just compile the one file.
 			compiler.compile(absPath)
 		}
-		msg("waiting...")
-		tick
 	}
 	
 	/** Watcher thread loop
@@ -60,13 +58,10 @@ class FileSystemWatcher(
 	def run: Unit = {
 		try {
 			if(initCompileAll){
-				
-				try { loadDirectoryNssFiles(new java.io.File(dirName)) }
-				catch { case _: Throwable => println("File just shat the bed.") }
 				msg("compiling all.")
 				compiler.compileAll(dirName)
-				tick
 			}
+			loadDirectoryNssFiles(new java.io.File(dirName))
 			msg("waiting...")
 			tick
 			while(!t.isInterrupted()) {
@@ -96,11 +91,7 @@ class FileSystemWatcher(
 				tick
 			case err: Throwable =>
 				msg("unexpected exception")
-				
-				
 				err.printStackTrace()
-				
-				tick
 		}
 	}
 	
@@ -110,5 +101,4 @@ class FileSystemWatcher(
 		watch.close()
 		t.interrupt()
 	}
-	
 }

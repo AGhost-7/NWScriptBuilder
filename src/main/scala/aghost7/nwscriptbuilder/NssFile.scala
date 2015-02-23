@@ -1,4 +1,4 @@
-package aghost7.nwscriptconsole
+package aghost7.nwscriptbuilder
 
 import scala.annotation._
 import java.io.File
@@ -89,10 +89,10 @@ object NssFile {
 	 *  
 	 *  @param fl is the target file.
 	 */
-	def fromFile(fl: File): NssFile = {
-		val path = fl.getAbsolutePath()
+	def fromFile(file: File): NssFile = {
+		val path = file.getAbsolutePath()
 		// Will be used later to resolve include changes.
-		val name = fl.getName().replace(".nss", "").replace(".NSS", "")
+		val name = file.getName().replace(".nss", "").replace(".NSS", "")
 		val lines = io.Source.fromFile(path).getLines.toList
 		fromList(name, path, lines)
 	}

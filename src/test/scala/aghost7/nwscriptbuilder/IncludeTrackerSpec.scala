@@ -1,4 +1,4 @@
-package aghost7.nwscriptconsole
+package aghost7.nwscriptbuilder
 
 import org.scalatest._
 import org.scalatest.junit.JUnitRunner

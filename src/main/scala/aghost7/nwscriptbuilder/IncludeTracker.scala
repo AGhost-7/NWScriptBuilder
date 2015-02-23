@@ -1,4 +1,4 @@
-package aghost7.nwscriptconsole
+package aghost7.nwscriptbuilder
 
 import scala.collection.mutable.{Map => MMap}
 
@@ -48,11 +48,8 @@ trait IncludeTracker {
 				val (incs, execs) = fl
 					.filter { _.includes.contains(name) }
 					.partition { _.isInclude }
-				
 				val incsDeep = incs.flatMap { inc => walkUp(inc) }
-				
 				execs ++: incsDeep
-				
 			case NssFile(name, path, false) =>
 				List(nss)
 		}
