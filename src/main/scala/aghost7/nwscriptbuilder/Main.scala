@@ -27,9 +27,10 @@ object Main extends App {
 	
 	// Process configuration file...
 	val conf = {
-		val userConf = ConfigFactory.parseFile(new File("application.conf"))
+		val userFile = new File("application.conf")
+		println("Configuration file found: " + userFile.exists())
+		val userConf = ConfigFactory.parseFile(userFile)
 		ConfigFactory.load(userConf) 
-		//userConf
 	}	
 	
 	val compiler = CompilerProcessor.fromConfig(conf.getConfig("compiler"))

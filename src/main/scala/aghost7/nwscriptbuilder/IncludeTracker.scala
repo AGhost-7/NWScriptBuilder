@@ -58,7 +58,7 @@ trait IncludeTracker {
 		
 	}
 	
-	/** Recursively reads all nss files in the directory .
+	/** Recursively reads all nss files in the directory.
 	 *  
 	 *  @param dir is the target directory.
 	 */
@@ -73,7 +73,9 @@ trait IncludeTracker {
 		dirs.foreach(loadDirectoryNssFiles)
 	}
 	
-	
+	def remove(target: String){
+		files.remove(target).get
+	}
 	
 }
 

@@ -10,86 +10,103 @@ import java.io.File
 
 
 class CompilerProcessor(
-		val compilerLoc: String,
-		val baseArgs: String, 
-		val fullCompCol: List[String],
-		val multiSpawn: Boolean) {
+		compilerLoc: String,
+		baseArgs: String, 
+		fullCompCol: List[String],
+		multiSpawn: Boolean,
+		filterOutput: Boolean) {
 	
 	private val compFile = new File(compilerLoc)
+	private val compAbs = compFile.getAbsolutePath
 	private val compDir = compFile.getParentFile()
 	private val compName = compFile.getName
 	
+	/** Create compiler output pipe based on settings.
+	 */
 	private val compilerIn = 
-		ProcessLogger({ line => 
-			if(line.startsWith("Compiling") 
-					|| line.startsWith("Error")){
-				println("")
-				println(line) 
-			} else if(line.startsWith("Total Execution")) {
+		if(filterOutput)
+			ProcessLogger({ line => 
+				if(line.startsWith("Compiling") 
+						|| line.startsWith("Error")){
+					println("")
+					println(line) 
+				} else if(line.startsWith("Total Execution")) {
+					println(line)
+					print("> ")
+					flush
+				}
+			}, { line => 
 				println(line)
-				print("> ")
-				flush
-			}
-		}, { line => 
-			println(line)
-		})
+			})
+		else
+			ProcessLogger({ line => 
+				if(line.startsWith("Total Execution")) {
+					println(line)
+					print("> ")
+					flush
+				} else if(!line.isEmpty){
+					println(line)
+				}
+			}, { line => 
+				println(line)
+			})
 	
 	/** Returns the constructed command to use for the compiler
 	 */
 	def batchCommand(dirName: String, files: Seq[String]): String = 
-		s"""$compName -b "$dirName" $baseArgs ${files.mkString(" ")}"""
+		s""""$compAbs" -b "$dirName" $baseArgs ${files.mkString(" ")}"""
 	
 	def simpleCommand(file: String): String =
-		s"""$compName $baseArgs $file"""
+		s""""$compAbs" $baseArgs $file"""
 	
 
-	/** Computes how the load is going to be distributed.
+	/** Computes how the load is going to be distributed. Checks files 
+	 *  recursively.
+	 *  
+	 *  @param rootDir is the starting directory.
 	 */
-	def partitionParallel(rootDir: File) {
+	def partitionParallel(rootDir: File): Seq[Seq[String]] = {
 		
-		def startingWith(chars: String, dir: File) = {
+		/** This will construct the exact list of wildcarded paths where there
+		 *  is a file which exists to be compiled.
+		 */
+		def startingWith(chars: String, dir: File): Seq[String] = {
 			val children = dir.listFiles
 			val (dirs, files) = children.partition { _.isDirectory }
-			val matches = files.flatMap { file =>
-				val fileName = file.getName
-				val cOpt = chars.find { c => fileName.startsWith(c+"") }
-				// if the char was found, then I need to turn it into a wildcard expression
-				cOpt.map { c =>
-					val dir = file.getParentFile
-					dir.getAbsolutePath + "/" + c + "*.nss"
-				}
-			}.distinct
+			val absPath = dir.getAbsolutePath
+			val fileNames = files.map { _.getName }
 			
+			val matches = chars.flatMap { char =>
+				val c = "" + char
+				if(fileNames.exists { _.startsWith(c) })
+					Some("\"" + absPath + "/" + char + "*.nss\"")
+				else
+					None
+			}
+			
+			// then I need to descend into the other directories.
+			matches ++ dirs.flatMap { d => startingWith(chars, d) }
 		}
-		/*
-		val children = file.listFiles
-		val (dirs, files) = children.partition{ _.isDirectory }
-		
-		val wildcards = (for {
-			chars <- fullCompCol
-			child <- files
-			char <- chars
-			if(child.getName.startsWith(char + "") )
-		} yield {
-			child.getParentFile().getAbsolutePath() + "/" + char + "*.nss"
-		}).distinct
-		*/
-		
+		fullCompCol.map{ chars => startingWith(chars, rootDir) }
 	}
 		
 	/** Compiles the entire given directory.
+	 *  
+	 *  @param dirName is the absolute path of the target directory to compile.
 	 */
-	def compileAll(dirName: String) {
+	def compileAll(dirPath: String) {
 		if(multiSpawn){
-			for(chars <- fullCompCol){
-				val fls = chars
-					.map { c => "\"" + dirName + "/" + c + "*.nss\""  }
-					
-				val cmd = batchCommand(dirName, fls)
-				Process(cmd, compDir).run(compilerIn)
+			val dir = new File(dirPath)
+			val parts = partitionParallel(dir)
+			for(charsParts <- parts){
+				if(!charsParts.isEmpty){
+					val cmd = batchCommand(dirPath, charsParts)
+					cmd.run(compilerIn)
+				}
+				
 			}
 		} else {
-			Process(simpleCommand(dirName + "/*.nss"), compDir).run(compilerIn)
+			Process(simpleCommand(dirPath + "/*.nss"), compDir).run(compilerIn)
 		}
 	}
 	
@@ -98,14 +115,14 @@ class CompilerProcessor(
 				.map { nss => "\"" + nss.path + "\"" }
 				
 		val cmd = batchCommand(dirName, fls)
-		Process(cmd, compDir).run(compilerIn)	
+		cmd.run(compilerIn)
 	}
 	
 	/** Compiles the file at the given absolute path.
 	 */
 	def compile(absPath: String): Unit = {
 		val cmd = simpleCommand(absPath)
-		Process(cmd, compDir).run(compilerIn)
+		cmd.run(compilerIn)
 	}
 	
 	def compile(nss: NssFile): Unit = compile(nss.path)
@@ -127,8 +144,8 @@ object CompilerProcessor {
 		val letters: List[String] = 
 			if(multiSpawn) conf.getStringList("process-assignments").toList
 			else Nil
-		
-		new CompilerProcessor(compilerLoc, baseArgs, letters, multiSpawn)
+		val filter = conf.getBoolean("filter-output")
+		new CompilerProcessor(compilerLoc, baseArgs, letters, multiSpawn,filter)
 	}
 	
 	

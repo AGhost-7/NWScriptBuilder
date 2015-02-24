@@ -5,7 +5,7 @@ import java.nio.file._
 import java.nio.file.StandardWatchEventKinds._
 import java.lang.InterruptedException
 import scala.collection.JavaConversions._
-
+import java.io.File
 
 /** Run watch logic on separate thread to allow user to input other arguments 
  *  in the console.
@@ -40,16 +40,20 @@ class FileSystemWatcher(
 	/** Called if file is an nss file to process changes.
 	 */
 	def processNssChange(kind: WatchEvent.Kind[_], dirPath: String) {
-		val (isInclude, absPath) = include(dirPath)
-		if(isInclude){
-			// then I need to check which other files that were affected...
-			val recomp: List[NssFile] = dependees(absPath)
-			msg("compiling depending files")
-			compiler.compileList(dirName, recomp)
+		if(kind == ENTRY_DELETE){
+			remove(dirPath)
 		} else {
-			msg("compiling file: " + dirPath)
-			// we can just compile the one file.
-			compiler.compile(absPath)
+			val (isInclude, absPath) = include(dirPath)
+			if(isInclude){
+				// then I need to check which other files that were affected...
+				val recomp: List[NssFile] = dependees(absPath)
+				println("")
+				compiler.compileList(dirName, recomp)
+			} else {
+				println("")
+				// we can just compile the one file.
+				compiler.compile(absPath)
+			}
 		}
 	}
 	
@@ -61,7 +65,7 @@ class FileSystemWatcher(
 				msg("compiling all.")
 				compiler.compileAll(dirName)
 			}
-			loadDirectoryNssFiles(new java.io.File(dirName))
+			loadDirectoryNssFiles(new File(dirName))
 			msg("waiting...")
 			tick
 			while(!t.isInterrupted()) {
@@ -92,6 +96,7 @@ class FileSystemWatcher(
 			case err: Throwable =>
 				msg("unexpected exception")
 				err.printStackTrace()
+				tick
 		}
 	}
 	

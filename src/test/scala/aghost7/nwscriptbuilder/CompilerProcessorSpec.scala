@@ -12,11 +12,12 @@ class CompilerProcessorSpec extends FlatSpec with Matchers {
 			compilerLoc = "C:/foo.exe",
 			baseArgs = "-a",
 			fullCompCol = Nil,
-			multiSpawn = true)
+			multiSpawn = true,
+			filterOutput = false)
 	
 	"Command construction" should "equal exactly to"  in {
-		val batch = "foo.exe -b \"dir\" -a dir/example.nss"
-		val simple = "foo.exe -a dir/example.nss"
+		val batch = """"C:\foo.exe" -b "dir" -a dir/example.nss"""
+		val simple = """"C:\foo.exe" -a dir/example.nss"""
 		val files = Seq("dir/example.nss")
 		
 		compiler.batchCommand("dir", files) should equal (batch)

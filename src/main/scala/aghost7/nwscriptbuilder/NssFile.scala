@@ -93,7 +93,9 @@ object NssFile {
 		val path = file.getAbsolutePath()
 		// Will be used later to resolve include changes.
 		val name = file.getName().replace(".nss", "").replace(".NSS", "")
-		val lines = io.Source.fromFile(path).getLines.toList
+		val src = io.Source.fromFile(path)
+		val lines = src.getLines.toList
+		src.close// no lending pattern? :<
 		fromList(name, path, lines)
 	}
 	
