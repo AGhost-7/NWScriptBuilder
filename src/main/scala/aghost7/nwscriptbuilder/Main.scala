@@ -1,11 +1,14 @@
 package aghost7.nwscriptbuilder
 
 import java.nio.file._
+import java.io.File
+
 import Console._
-import com.typesafe.config._
 import scala.collection.mutable.{Map => MMap}
 import scala.collection.JavaConversions._
-import java.io.File
+
+import com.typesafe.config._
+
 
 /** Extracts full path string from arguments in pattern match.
  */
@@ -23,15 +26,22 @@ object Main extends App {
 	
 	val watchers = MMap[String, FileSystemWatcher]()
 	
-	println("Initializing...")
+	implicit val tag = LoggerTag("")
+	
+	Logger.info("Initializing...")
+	
+	Logger.debug("Running in debug mode.")
 	
 	// Process configuration file...
 	val conf = {
-		val userFile = new File("application.conf")
-		println("Configuration file found: " + userFile.exists())
+		val jarPath = getClass.getProtectionDomain.getCodeSource.getLocation.toURI.getPath
+		val jar = new File(jarPath)
+		val path = jar.getParentFile().getAbsolutePath() + "/application.conf"
+		val userFile = new File(path)
+		Logger.debug("Configuration file found: " + userFile.exists)
 		val userConf = ConfigFactory.parseFile(userFile)
 		ConfigFactory.load(userConf) 
-	}	
+	}
 	
 	val compiler = CompilerProcessor.fromConfig(conf.getConfig("compiler"))
 	val compAll = conf.getBoolean("watchers.startup.full-compile")
@@ -39,35 +49,41 @@ object Main extends App {
 	conf.getStringList("watchers.startup.directories").foreach { dir =>
 		watchers += dir -> new FileSystemWatcher(dir, compiler, compAll)
 	}
-
+	
+	val argPat = """(["][\\A-z0-9\/ ]+["])|([ ]?[\\A-z0-9\/-]+[ ])|([\\A-z0-9\/-]+)""".r
+	
 	/** Processes the arguments passed through the mini console mode.
 	 */
 	def processArgs(args: List[String]): Unit = args match {
 		case Nil => 
+			val input = readLine
+			println("")
+			val consArgs = argPat.findAllMatchIn(input).map { _.toString.trim }
+			processArgs(consArgs.toList)
 		case "clear" :: rest =>
 			watchers.values.foreach { _.purge }
 			watchers.clear
 			processArgs(rest)
 		case "watch" :: Path(dir) :: rest =>
 			if(watchers.get(dir).isDefined){
-				println("Watch is already active")
+				Logger.error(s"watch is already active for directory $dir")
 			} else {
 				val dirFile = new File(dir)
 				if(dirFile.exists) {
 					val path = dirFile.getAbsolutePath
 					watchers += dir -> new FileSystemWatcher(path, compiler, false)
 				} else {
-					println("target does not exist.")
+					Logger.error(s"target $dir does not exist.")
 				}
 					
 			}
 			processArgs(rest)
 		case "remove" :: Path(dir) :: rest =>
 			watchers.remove(dir).fold[Unit] {
-				println(s"No watch for directory $dir found.")
+				Logger.error(s"No watch for directory $dir found.")
 			} { listen =>
 				listen.purge
-				println("Watch succesfully removed")
+				Logger.info("Watch succesfully removed")
 			}
 			processArgs(rest)
 		case "all" :: rest =>
@@ -75,22 +91,20 @@ object Main extends App {
 			processArgs(rest)
 		case "exit" :: rest =>
 			watchers.values.foreach { _.purge }
-			println("Exiting...")
-			System.exit(0)
+			Logger.info("Exiting...")
+		
 		case skip :: rest =>
-			println("argument not processed: " + skip)
+			Logger.info("argument not processed: " + skip)
 			processArgs(rest)
 	}
 	
-	val argPat = """(["][\\A-z0-9\/ ]+["])|([ ]?[\\A-z0-9\/-]+[ ])|([\\A-z0-9\/-]+)""".r
-	while(true){
-		//print("\n> ")
-		//flush()
-		val input = readLine
-		println("")
-		val consArgs = argPat.findAllMatchIn(input).map { _.toString.trim }
-		processArgs(consArgs.toList)
-	}
+	try
+		processArgs(Nil)
+	finally 
+		if(Logger.isDebug)
+			Logger.writer.close()
+		
+
 }
 
 

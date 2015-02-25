@@ -9,6 +9,8 @@ import java.io.File
 trait IncludeTracker {
 	import java.nio.file.Path
 	
+	implicit def tag: LoggerTag
+	
 	/** File Path -> List[Include Dependencies] */
 	private val files = MMap[String, NssFile]()
 	
@@ -23,11 +25,13 @@ trait IncludeTracker {
 	def include(file: String): (Boolean, String) = {
 		val nss = NssFile(file)
 		files += nss.path -> nss
+		Logger.debug("updating file : " + nss.path)
 		(nss.isInclude, nss.path)
 	}
 	
 	def include(file: File): Unit = {
 		val nss = NssFile.fromFile(file)
+		Logger.debug("updating file: " + nss.path)
 		files += nss.path -> nss
 	}
 	
@@ -74,6 +78,7 @@ trait IncludeTracker {
 	}
 	
 	def remove(target: String){
+		Logger.debug("removing file: " + target)
 		files.remove(target).get
 	}
 	

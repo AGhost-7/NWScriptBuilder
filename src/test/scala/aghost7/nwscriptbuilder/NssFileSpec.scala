@@ -6,6 +6,9 @@ import org.junit.runner.RunWith
 
 @RunWith(classOf[JUnitRunner])
 class NssFileSpec extends FlatSpec with Matchers {
+	
+	implicit val tag = LoggerTag("")
+	
 	def fetchNss(target: String) = 
 		NssFile("src/test/resources/" + target)
 		
@@ -40,5 +43,22 @@ class NssFileSpec extends FlatSpec with Matchers {
 		hello.includes.length should be (1)
 	}
 	
-	
+	"conversation scripts" should "ga scripts as mains" in {
+		val source = """
+			void main(string greet="person", int x = 1){
+			""".lines
+		source.exists{ 
+			case MainLine(s) => true 
+			case _ => false
+		} should be (true)
+	}
+	it should "gc scripts as starting conditionals" in {
+		val source = """
+			int StartingConditional(int nLevelRequired=20, string foo_bar)
+			""".lines
+		source.exists {
+			case CondLine(s) => true
+			case _ => false
+		} should be (true)
+	}
 }

@@ -7,11 +7,15 @@ import org.junit.runner.RunWith
 
 @RunWith(classOf[JUnitRunner])
 class IncludeTrackerSpec extends FlatSpec with Matchers {
+	implicit val tag = LoggerTag("")
 	
 	def fetchNss(target: String) = 
 		NssFile("src/test/resources/" + target)
 		
-	val tracker = new IncludeTracker{}
+	val tracker = new IncludeTracker{
+		implicit val tag = LoggerTag("")
+	}
+	
 	val files = List("foobar.nss", "foobar2.nss", "hello.nss", "hello2.nss", 
 			"hello3.nss", "hello4.nss")
 	val paths = files.map { file =>

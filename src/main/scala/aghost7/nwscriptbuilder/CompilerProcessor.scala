@@ -1,13 +1,12 @@
 package aghost7.nwscriptbuilder
 
-import com.typesafe.config._
+import java.io.File
+
 import sys.process._
 import Console._
 import scala.collection.JavaConversions._
-import java.io.File
 
-
-
+import com.typesafe.config.Config
 
 class CompilerProcessor(
 		compilerLoc: String,
@@ -21,35 +20,25 @@ class CompilerProcessor(
 	private val compDir = compFile.getParentFile()
 	private val compName = compFile.getName
 	
-	/** Create compiler output pipe based on settings.
+	/** Logging pipe.
 	 */
-	private val compilerIn = 
-		if(filterOutput)
-			ProcessLogger({ line => 
-				if(line.startsWith("Compiling") 
-						|| line.startsWith("Error")){
-					println("")
-					println(line) 
-				} else if(line.startsWith("Total Execution")) {
-					println(line)
-					print("> ")
-					flush
-				}
-			}, { line => 
-				println(line)
-			})
-		else
-			ProcessLogger({ line => 
-				if(line.startsWith("Total Execution")) {
-					println(line)
-					print("> ")
-					flush
-				} else if(!line.isEmpty){
-					println(line)
-				}
-			}, { line => 
-				println(line)
-			})
+	private def loggingPipe(implicit tag: LoggerTag) =
+		ProcessLogger({ line => 
+			if(line.contains("Error:")
+					|| line.contains("error(s);")){
+				Logger.error(line)
+			} else if(line.startsWith("Compiling")){
+				Logger.info(line)
+			} else if(line.startsWith("Total Execution")) {
+				Logger.info(line)
+				print("> ")
+				flush
+			} else if(!filterOutput) {
+				Logger.info(line)
+			}
+		}, { line => 
+			Logger.error(line)
+		})
 	
 	/** Returns the constructed command to use for the compiler
 	 */
@@ -94,38 +83,43 @@ class CompilerProcessor(
 	 *  
 	 *  @param dirName is the absolute path of the target directory to compile.
 	 */
-	def compileAll(dirPath: String) {
+	def compileAll(dirPath: String)(implicit tag: LoggerTag) {
 		if(multiSpawn){
 			val dir = new File(dirPath)
 			val parts = partitionParallel(dir)
 			for(charsParts <- parts){
 				if(!charsParts.isEmpty){
 					val cmd = batchCommand(dirPath, charsParts)
-					cmd.run(compilerIn)
+					Logger.debug("running command: " + cmd)
+					cmd.run(loggingPipe)
 				}
 				
 			}
 		} else {
-			Process(simpleCommand(dirPath + "/*.nss"), compDir).run(compilerIn)
+			val cmd = simpleCommand(dirPath + "/*.nss")
+			Logger.debug("running command: \n" + cmd)
+			cmd.run(loggingPipe)
 		}
 	}
 	
-	def compileList(dirName: String, fileNames: List[NssFile]){
+	def compileList(dirName: String, fileNames: List[NssFile])(implicit tag: LoggerTag){
 		val fls = fileNames
 				.map { nss => "\"" + nss.path + "\"" }
 				
 		val cmd = batchCommand(dirName, fls)
-		cmd.run(compilerIn)
+		Logger.debug("Running command: " + cmd)
+		cmd.run(loggingPipe)
 	}
 	
 	/** Compiles the file at the given absolute path.
 	 */
-	def compile(absPath: String): Unit = {
-		val cmd = simpleCommand(absPath)
-		cmd.run(compilerIn)
+	def compile(absPath: String)(implicit tag: LoggerTag) {
+		val cmd = simpleCommand('"' + absPath + '"')
+		Logger.debug("running command: " + cmd)
+		cmd.run(loggingPipe)
 	}
 	
-	def compile(nss: NssFile): Unit = compile(nss.path)
+	def compile(nss: NssFile)(implicit tag: LoggerTag): Unit = compile(nss.path)
 	
 }
 

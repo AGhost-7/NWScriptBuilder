@@ -43,17 +43,16 @@ object SkippableLine {
 	}
 }
 object MainLine {
-	private val pat = """^\s*void\s*main\s*\([A-z0-9\s=]*\)""".r
+	private val pat = """^\s*void\s*main\s*\([A-z0-9\s=,_"]*\)""".r
 	def unapply(s: String) = pat.findFirstIn(s)
 }
 object CondLine {
-	private val pat = """^\s*int\s*StartingConditional\s*\([A-z0-9\s=]*\)""".r
+	private val pat = """^\s*int\s*StartingConditional\s*\([A-z0-9\s=,_"]*\)""".r
 	def unapply(s: String) = pat.findFirstIn(s)
 }
 
 object NssFile {
 	private val includePattern = """^(\s*#include\s+["])([A-z0-9_]+)""".r
-	
 	
 	/** Constructs a NssFile instance from provided source code.
 	 *
@@ -62,7 +61,10 @@ object NssFile {
 	 *  comes from.
 	 *  @param source is the contents of the file, line by line.
 	 */
-	def fromList(name: String, path: String, source: List[String]): NssFile = {
+	def fromList(name: String, 
+			path: String, 
+			source: List[String])
+			(implicit tag: LoggerTag): NssFile = {
 		@tailrec
 		def process(lines: List[String], 
 				isMain: Boolean = false,
@@ -89,7 +91,7 @@ object NssFile {
 	 *  
 	 *  @param fl is the target file.
 	 */
-	def fromFile(file: File): NssFile = {
+	def fromFile(file: File)(implicit tag: LoggerTag): NssFile = {
 		val path = file.getAbsolutePath()
 		// Will be used later to resolve include changes.
 		val name = file.getName().replace(".nss", "").replace(".NSS", "")
@@ -104,7 +106,7 @@ object NssFile {
 	/** Constructs an NssFile instance.
 	 *  n.b., This is blocking IO, and a bit intensive.
 	 */
-	def apply(target: String) = fromFile(new File(target))
+	def apply(target: String)(implicit tag: LoggerTag) = fromFile(new File(target))
 	
 	
 	/** Unapply used for pattern matching in tail recursive functions.

@@ -1,11 +1,12 @@
 package aghost7.nwscriptbuilder
 
+import java.io.File
 
 import java.nio.file._
 import java.nio.file.StandardWatchEventKinds._
 import java.lang.InterruptedException
+
 import scala.collection.JavaConversions._
-import java.io.File
 
 /** Run watch logic on separate thread to allow user to input other arguments 
  *  in the console.
@@ -15,20 +16,23 @@ class FileSystemWatcher(
 		compiler: CompilerProcessor, 
 		initCompileAll: Boolean) 
 		extends Runnable 
-		with IncludeTracker{
+		with IncludeTracker {
 
 	private val fs = FileSystems.getDefault()
 	private val watch = fs.newWatchService()
 	private val dir = fs.getPath(dirName)
 	private val key = dir.register(watch, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY)
-	
+	val watcherName = 
+		if(dirName.length > 25) "..." + dirName.drop(dirName.length - 25)
+		else dirName
+	implicit val tag = LoggerTag(s"Watcher ($watcherName): ")
 	private val t = new Thread(this)
 	
 	t.start()
 	
 	/** Sends a message to the user with the watcher's name
 	 */
-	def msg(s: String) = Console.println(s"\nWatcher ($dirName): $s")
+	//def msg(s: String) = Console.println(s"\nWatcher ($dirName): $s")
 	
 	/** Leave a tick to "hint" user that they can type into the console.
 	 */
@@ -44,7 +48,9 @@ class FileSystemWatcher(
 			remove(dirPath)
 		} else {
 			val (isInclude, absPath) = include(dirPath)
+
 			if(isInclude){
+				Logger.debug("file is include")
 				// then I need to check which other files that were affected...
 				val recomp: List[NssFile] = dependees(absPath)
 				println("")
@@ -62,11 +68,11 @@ class FileSystemWatcher(
 	def run: Unit = {
 		try {
 			if(initCompileAll){
-				msg("compiling all.")
+				Logger.info("compiling all.")
 				compiler.compileAll(dirName)
 			}
 			loadDirectoryNssFiles(new File(dirName))
-			msg("waiting...")
+			println("waiting...")
 			tick
 			while(!t.isInterrupted()) {
 					val evs = watch.take.pollEvents
@@ -80,6 +86,7 @@ class FileSystemWatcher(
 							val file = pathEv.context
 							val full = dir.resolve(file).toString
 							if(full.toLowerCase.endsWith(".nss")){
+								Logger.debug(s"event to nss file $full detected.")
 								processNssChange(kind, full)
 							}
 							if(!key.reset){
@@ -91,10 +98,13 @@ class FileSystemWatcher(
 			}
 		} catch {
 			case _: ClosedWatchServiceException | _: InterruptedException =>
-				msg("service closed.")
+				Logger.info("service closed.")
+				//msg("service closed.")
 				tick
 			case err: Throwable =>
-				msg("unexpected exception")
+				Logger.error("unexpected exception")
+				//msg("unexpected exception")
+				//logger.error("unexpected exception")
 				err.printStackTrace()
 				tick
 		}
