@@ -48,9 +48,8 @@ class FileSystemWatcher(
 			remove(dirPath)
 		} else {
 			val (isInclude, absPath) = include(dirPath)
-
+			Logger.debug("File is include: " + isInclude)
 			if(isInclude){
-				Logger.debug("file is include")
 				// then I need to check which other files that were affected...
 				val recomp: List[NssFile] = dependees(absPath)
 				println("")
@@ -69,11 +68,11 @@ class FileSystemWatcher(
 		try {
 			if(initCompileAll){
 				Logger.info("compiling all.")
+				println("")
 				compiler.compileAll(dirName)
 			}
 			loadDirectoryNssFiles(new File(dirName))
-			println("waiting...")
-			tick
+			Logger.info("waiting...")
 			while(!t.isInterrupted()) {
 					val evs = watch.take.pollEvents
 					for(ev <- evs) {
@@ -99,12 +98,9 @@ class FileSystemWatcher(
 		} catch {
 			case _: ClosedWatchServiceException | _: InterruptedException =>
 				Logger.info("service closed.")
-				//msg("service closed.")
 				tick
 			case err: Throwable =>
 				Logger.error("unexpected exception")
-				//msg("unexpected exception")
-				//logger.error("unexpected exception")
 				err.printStackTrace()
 				tick
 		}

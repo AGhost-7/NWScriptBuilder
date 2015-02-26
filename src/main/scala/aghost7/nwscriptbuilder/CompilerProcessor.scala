@@ -24,17 +24,19 @@ class CompilerProcessor(
 	 */
 	private def loggingPipe(implicit tag: LoggerTag) =
 		ProcessLogger({ line => 
-			if(line.contains("Error:")
-					|| line.contains("error(s);")){
-				Logger.error(line)
-			} else if(line.startsWith("Compiling")){
-				Logger.info(line)
-			} else if(line.startsWith("Total Execution")) {
-				Logger.info(line)
-				print("> ")
-				flush
-			} else if(!filterOutput) {
-				Logger.info(line)
+			if(!line.isEmpty) {
+				if(line.contains("Error:")
+						|| line.contains("error(s);")){
+					Logger.error(line, false)
+				} else if(line.startsWith("Compiling")){
+					Logger.info(line, false)
+				} else if(line.startsWith("Total Execution")) {
+					Logger.info(line, false)
+					print("> ")
+					flush
+				} else if(!filterOutput) {
+					Logger.info(line, false)
+				}
 			}
 		}, { line => 
 			Logger.error(line)

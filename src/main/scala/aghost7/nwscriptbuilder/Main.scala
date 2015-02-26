@@ -7,8 +7,6 @@ import Console._
 import scala.collection.mutable.{Map => MMap}
 import scala.collection.JavaConversions._
 
-import com.typesafe.config._
-
 
 /** Extracts full path string from arguments in pattern match.
  */
@@ -32,16 +30,10 @@ object Main extends App {
 	
 	Logger.debug("Running in debug mode.")
 	
+	Logger.debug("Configuration file found: " + Conf.userFileFound)
+	
 	// Process configuration file...
-	val conf = {
-		val jarPath = getClass.getProtectionDomain.getCodeSource.getLocation.toURI.getPath
-		val jar = new File(jarPath)
-		val path = jar.getParentFile().getAbsolutePath() + "/application.conf"
-		val userFile = new File(path)
-		Logger.debug("Configuration file found: " + userFile.exists)
-		val userConf = ConfigFactory.parseFile(userFile)
-		ConfigFactory.load(userConf) 
-	}
+	val conf = Conf.get
 	
 	val compiler = CompilerProcessor.fromConfig(conf.getConfig("compiler"))
 	val compAll = conf.getBoolean("watchers.startup.full-compile")
@@ -52,18 +44,26 @@ object Main extends App {
 	
 	val argPat = """(["][\\A-z0-9\/ ]+["])|([ ]?[\\A-z0-9\/-]+[ ])|([\\A-z0-9\/-]+)""".r
 	
+	def tick = {
+		print("> ")
+		flush
+	}
+	
 	/** Processes the arguments passed through the mini console mode.
 	 */
 	def processArgs(args: List[String]): Unit = args match {
 		case Nil => 
+			tick
 			val input = readLine
-			println("")
 			val consArgs = argPat.findAllMatchIn(input).map { _.toString.trim }
+			if(consArgs.isEmpty) println("")
 			processArgs(consArgs.toList)
+			
 		case "clear" :: rest =>
 			watchers.values.foreach { _.purge }
 			watchers.clear
 			processArgs(rest)
+			
 		case "watch" :: Path(dir) :: rest =>
 			if(watchers.get(dir).isDefined){
 				Logger.error(s"watch is already active for directory $dir")
@@ -75,20 +75,23 @@ object Main extends App {
 				} else {
 					Logger.error(s"target $dir does not exist.")
 				}
-					
 			}
 			processArgs(rest)
+			
 		case "remove" :: Path(dir) :: rest =>
-			watchers.remove(dir).fold[Unit] {
-				Logger.error(s"No watch for directory $dir found.")
+			val abs = new File(dir).getAbsolutePath
+			watchers.remove(abs).fold[Unit] {
+				Logger.error(s"No watch for directory $abs found.")
 			} { listen =>
 				listen.purge
 				Logger.info("Watch succesfully removed")
 			}
 			processArgs(rest)
+			
 		case "all" :: rest =>
 			watchers.values.foreach { w => compiler.compileAll(w.dirName) }
 			processArgs(rest)
+			
 		case "exit" :: rest =>
 			watchers.values.foreach { _.purge }
 			Logger.info("Exiting...")
