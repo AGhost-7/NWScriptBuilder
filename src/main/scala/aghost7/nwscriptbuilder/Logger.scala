@@ -1,6 +1,5 @@
 package aghost7.nwscriptbuilder
 
-import aghost7.scripty.IO
 import java.io.{PrintWriter,BufferedWriter,FileWriter}
 import java.io.File
 

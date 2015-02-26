@@ -17,5 +17,3 @@ recompile the files if needed.
 * `exit` will end all watchers and exit the application.
 * `all` will compile the entire contents of directories which are under watch.
 
-You can also point to a configuration file at startup. For example, using 
-`NWScriptBuilder project2.conf`.
