@@ -2,7 +2,8 @@ package aghost7.nwscriptbuilder
 
 import java.nio.file._
 import java.io.File
-
+import java.awt.Toolkit
+import java.awt.datatransfer.StringSelection
 import Console._
 import scala.collection.mutable.{Map => MMap}
 import scala.collection.JavaConversions._
@@ -49,6 +50,14 @@ object Main extends App {
 		flush
 	}
 	
+	def toClipboard(s: String) {
+		val select = new StringSelection(s)
+		Toolkit
+			.getDefaultToolkit
+			.getSystemClipboard
+			.setContents(select, select)
+	}
+	
 	/** Processes the arguments passed through the mini console mode.
 	 */
 	def processArgs(args: List[String]): Unit = args match {
@@ -89,12 +98,35 @@ object Main extends App {
 			processArgs(rest)
 			
 		case "all" :: rest =>
+			println("")
 			watchers.values.foreach { w => compiler.compileAll(w.dirName) }
 			processArgs(rest)
+		
+		case "chars" :: rest =>
+			val names = watchers.values.flatMap { w => w.fileNames }.toList
+			val statsStr = Stats.charCount(names)
+				.map { case (char, count) => char + " = " + count }
+				.mkString("\n")
+				
+			Logger.info("-Character stats for watched files-\n" + statsStr)
+			
+			processArgs(rest)
+			
+		case "chars-recommend" :: n :: rest if(n.forall{ _.isDigit }) =>
+			val names = watchers.values.flatMap {w => w.fileNames}.toList
+			val stats = Stats
+				.recommendChars(names, n.toInt)
+			val charCombos = stats
+				.map { charset => "\"" + charset + "\"" }
+				.mkString(", ")
+				
+			toClipboard("[" + charCombos + "]")
+			Logger.info("Recommended combination: " + stats.mkString(", "))
 			
 		case "exit" :: rest =>
 			watchers.values.foreach { _.purge }
 			Logger.info("Exiting...")
+			// Application shuts down naturally (no System.exit(0))
 		
 		case skip :: rest =>
 			Logger.info("argument not processed: " + skip)

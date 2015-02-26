@@ -24,7 +24,11 @@ trait IncludeTracker {
 	 */
 	def include(file: String): (Boolean, String) = {
 		val nss = NssFile(file)
-		files += nss.path -> nss
+		// n.b., I only need to synchronize methods which are mutating or cross
+		// thread getters.
+		files.synchronized {
+			files += nss.path -> nss
+		}
 		Logger.debug("updating file : " + nss.path)
 		(nss.isInclude, nss.path)
 	}
@@ -32,7 +36,25 @@ trait IncludeTracker {
 	def include(file: File): Unit = {
 		val nss = NssFile.fromFile(file)
 		Logger.debug("updating file: " + nss.path)
-		files += nss.path -> nss
+		files.synchronized {
+			files += nss.path -> nss
+		}
+	}
+	
+	/** Returns the file names.
+	 */
+	def fileNames: List[String] = files.synchronized {
+		files.map { case(key, v) => v.name }.toList
+	}
+	
+	/** Counts the starting letters of each script.
+	 */
+	def charStats: Map[Char, Int] = {
+		val fileNames = files.map { case(key, v) => v.name }.toList
+		fileNames.foldLeft(Map[Char, Int]()) { (total, name) =>
+			val charCount = name(0) -> total.getOrElse(name(0), 0)
+			total + charCount
+		}
 	}
 	
 	/** Returns which files depend on the file given.
@@ -79,7 +101,9 @@ trait IncludeTracker {
 	
 	def remove(target: String){
 		Logger.debug("removing file: " + target)
-		files.remove(target).get
+		files.synchronized{
+			files.remove(target).get
+		}
 	}
 	
 }
