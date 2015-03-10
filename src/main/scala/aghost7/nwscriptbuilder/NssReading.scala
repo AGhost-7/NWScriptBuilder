@@ -9,7 +9,7 @@ trait NssReading {
 	 *  @return Will give the main and starting conditional files which actually
 	 *  require re-compilation.
 	 */
-	def dependees(file: NssFile, files: Iterable[NssFile])
+	def findDependees(file: NssFile, files: Iterable[NssFile])
 			(implicit tag: LoggerTag) : List[NssFile] = {
 		def walkUp(nss: NssFile): Iterable[NssFile] = nss match {
 			case NssFile(name, includes, true) =>
@@ -40,14 +40,4 @@ trait NssReading {
 		dirs.map(directoryNssFiles).flatten.toSeq ++ nssFiles
 	}
 	
-	/** Counts the starting letters of each script.
-	 */
-	def charStats(files: Iterable[NssFile])
-			(implicit tag: LoggerTag): Map[Char, Int] = {
-		val fileNames = files.map { _.name }
-		fileNames.foldLeft(Map[Char, Int]()) { (total, name) =>
-			val charCount = name(0) -> total.getOrElse(name(0), 0)
-			total + charCount
-		}
-	}
 }

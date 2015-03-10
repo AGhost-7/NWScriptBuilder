@@ -1,4 +1,4 @@
-# What? What is this?
+# Objective
 The idea for this project was to create a tool which would make it easier to 
 integrate Skywing's Advanced NwnScript compiler with any text editor or IDE.
 
@@ -13,11 +13,11 @@ Currently, due to how text editors work, saving changes to a file will trigger t
 change event more than once.
 
 # Commands
-* `watch <directory>` will spawn a thread which will check the directory for any file
-changes and recompile the files if needed. Argument may be quoted if there are spaces
-in the path given.
+* `watch <directory>` will restart the watcher and will check for changes and 
+recompile the files if needed. Argument may be quoted if there are spaces in the 
+path given.
 * `clear` will remove all watches to directories that currently exist.
-* `exit` will end all watchers and exit the application.
+* `exit` will end all watches and exit the application.
 * `all` will compile the entire contents of directories which are under watch.
 * `chars` will display the count for the first character in the watched directory.
 This is just a facility for setting up the multi-processs compilation.

@@ -1,6 +1,19 @@
 package aghost7.nwscriptbuilder
 
-object Stats {
+import scala.collection.mutable.{Map => MMap}
+
+trait CharStats {
+	
+	import DirectoriesMapping._
+	
+	/** Takes the complete directories mapping and turns it into a simple file 
+	 *  name list.
+	 */
+	def flattenToNames(m : DirectoriesMap): List[String] = 
+		m.values.flatMap { m2 =>
+			m2.values.map { nss => nss.name }
+		}.toList
+	
 	
 	/** Takes a list of file names and counts their first letters.
 	 *  
@@ -9,21 +22,20 @@ object Stats {
 	 *  @return A list of chars with the number of times it is in the first 
 	 *  letter
 	 */
-	def charCount(fileNames: List[String]): List[(Char, Int)] = 
-		fileNames.foldLeft(Map[Char, Int]()) { (total, name) =>
+	def charCount(directories: DirectoriesMap): List[(Char, Int)] = 
+		flattenToNames(directories).foldLeft(Map[Char, Int]()) { (total, name) =>
 			val newCount = total.getOrElse(name(0), 0) + 1
 			val charCount = name(0) -> newCount
 			total + charCount
 		}.toList
 		.sortBy {  _._2 }
-	
-	
-	
+		
+		
 	/** This goes even further and recommends you a specific combination of 
 	 *  characters to use for splitting across the specified number of processes.
 	 */
-	def recommendChars(fileNames: List[String], processes: Int) : List[String] = {
-		val stats = charCount(fileNames)
+	def recommendChars(directories: DirectoriesMap, processes: Int) : List[String] = {
+		val stats = charCount(directories)
 		// find the x highest in the collection
 		val highest = stats
 				.sortBy{ _._2 }
@@ -51,5 +63,7 @@ object Stats {
 			withChar :: diff
 		}.map { _._1 }
 	}
+	
+	
 	
 }

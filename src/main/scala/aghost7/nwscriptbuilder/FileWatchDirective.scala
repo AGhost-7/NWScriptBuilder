@@ -61,7 +61,8 @@ object FileWatchScheduler {
 	def props(filter: Option[Regex]) = Props(new FileWatchScheduler(filter))
 }
 
-class FileWatchProcessor(parent: ActorRef, filter: Option[Regex]) extends Runnable {
+class FileWatchProcessor(parent: ActorRef, filter: Option[Regex]) 
+		extends Runnable {
 	
 	implicit val tag = LoggerTag("FileWatchProcessor :: ")
 	
@@ -83,7 +84,13 @@ class FileWatchProcessor(parent: ActorRef, filter: Option[Regex]) extends Runnab
 				val key = watch.take
 				for(ev <- key.pollEvents) {
 					val rel = ev.asInstanceOf[WatchEvent[Path]].context
-					val path = key.watchable().asInstanceOf[Path].resolve(rel).toString
+					val path = key
+						.watchable()
+						.asInstanceOf[Path]
+						.resolve(rel)
+						.toAbsolutePath()
+						.toString
+					
 					if(filter.map { _.findFirstIn(path).isDefined }.getOrElse(true)){
 						ev.kind match {
 							case ENTRY_CREATE => parent ! FileCreated(path)

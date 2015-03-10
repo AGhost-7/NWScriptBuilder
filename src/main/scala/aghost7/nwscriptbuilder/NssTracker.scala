@@ -8,27 +8,23 @@ import java.util.concurrent.TimeUnit
 sealed trait Cmd
 case class WatchCmd(path: String, compAll: Boolean) extends Cmd
 case object ProcessChangesCmd extends Cmd
+case object CompAllCmd extends Cmd
+case object CharsCountCmd extends Cmd
+case class CharsRecommendCmd(ps: Int) extends Cmd
+case class RemoveCmd(path: String) extends Cmd
 
-
-
-class NssTracker(compiler: CompilerProcessor) extends Actor with NssReading {
+class NssTracker(compiler: CompilerProcessor) 
+		extends Actor 
+		with NssReading 
+		with DirectoriesMapping 
+		with CharStats {
 	
-	implicit val tag = LoggerTag("NssTracker :: ")
+	implicit val tag = LoggerTag("")
 	
-	/** To ensure that events aren't double, or even tripple triggered by other
+	/** To ensure that events aren't double, or even tripple-triggered by other
 	 *  applications, the file system events are buffered.
 	 */
 	var check: List[String] = Nil
-	
-	/** A directory being watched is represented as a map of nss file instances,
-	 *  where the key is the absolute path 
-	 */
-	type NssDir = MMap[String, NssFile]
-	
-	/** This is the collection of directories being watched by the app. The key 
-	 *  here is the absolute path of the directory
-	 */
-	val directories = MMap[String, NssDir]()
 	
 	override def preStart() {
 		val filter = Some("[.][nN][sS][sS]$".r)
@@ -37,25 +33,9 @@ class NssTracker(compiler: CompilerProcessor) extends Actor with NssReading {
 	
 	def mkTag(path: String) : LoggerTag = {
 		val watcherName = 
-		if(path.length > 25) "..." + path.drop(path.length - 25)
-		else path
-		LoggerTag(s"Watcher ($watcherName): ")
-	}
-	
-	def findDirectory(file: String): (String, NssDir) = {
-		val dirs = directories
-				.filter { case (path, nssFiles) => 
-					file.startsWith(path) && 
-						nssFiles.exists{ case(abs, nss) => abs == file}
-				}
-		
-		if(dirs.isEmpty) 
-			throw new NoSuchElementException("Could not find directory.")
-		else if(dirs.size > 1)
-			throw new RuntimeException("Cannot resolve change to a single file.")
-		
-		val key = dirs.keys.toSeq(0)
-		(key, dirs(key))
+			if(path.length > 25) "..." + path.drop(path.length - 25)
+			else path
+		LoggerTag(watcherName + " :: ")
 	}
 	
 	def receive = {
@@ -69,7 +49,7 @@ class NssTracker(compiler: CompilerProcessor) extends Actor with NssReading {
 					Logger.info("Compiling all.")
 					compiler.compileAll(path)
 				}
-				
+				directories += path -> MMap()
 				context.child("scheduler").get ! StartWatch(path) 
 			}
 			
@@ -77,20 +57,12 @@ class NssTracker(compiler: CompilerProcessor) extends Actor with NssReading {
 		case ProcessChangesCmd =>
 			Logger.debug("Update files:\n" + check.distinct.mkString("\n"))
 			
-			val nssGroups = for(upFile <- check.distinct) yield {
-				// first resolve the parent directory of the changed file
-				val (dirPath, nssDir) = findDirectory(upFile)
-				// now I need to update each one
-				val nss = NssFile(upFile)
-				nssDir += nss.path -> nss
-				// And return the nss file to update. State on the maps is dirty and I
-				// need to update everything before I can walk through the dependencies.
-				(nss, dirPath, nssDir)
-			}
+			val nssGroups = updateAtPaths(check.distinct)
 			
 			for((nss, dirPath, nssDir) <- nssGroups){
+				implicit val tag = mkTag(dirPath)
 				if(nss.isInclude){
-					val depend = dependees(nss, nssDir.values)
+					val depend = findDependees(nss, nssDir.values)
 					compiler.compileList(dirPath, depend)
 				} else {
 					compiler.compile(nss.path)
@@ -99,6 +71,17 @@ class NssTracker(compiler: CompilerProcessor) extends Actor with NssReading {
 			
 			check = Nil
 			
+		case CompAllCmd =>
+			directories.keys.foreach { dirPath =>
+				compiler.compileAll(dirPath)
+			}
+			
+		case CharsRecommendCmd(processes) =>
+			val cs = recommendChars(directories, processes)
+			
+		case CharsCountCmd =>
+			
+		case RemoveCmd(path) =>
 			
 		case FileCreated(path) =>
 			if(check.isEmpty){
@@ -117,7 +100,12 @@ class NssTracker(compiler: CompilerProcessor) extends Actor with NssReading {
 			check = path :: check
 
 		case FileRemoved(path) =>
-			Logger.debug("File removed: " + path)
+			val (dirPath, nssDir) = findDirectory(path)
+			nssDir.remove(path).fold {
+				Logger.error("Could not find deleted file in directory mappings.")
+			} { file =>
+				Logger.debug("File removed: " + path)
+			}
 			
 		case ClearWatch =>
 			context.child("scheduler").get ! ClearWatch

@@ -42,7 +42,7 @@ object Main extends App {
 	
 	val tracker = system.actorOf(NssTracker.props(compiler))
 	conf.getStringList("watchers.startup.directories").foreach { dir =>
-		tracker ! WatchCmd(dir, compAll)
+		tracker ! WatchCmd(new File(dir).getAbsolutePath(), compAll)
 	}
 	
 	
@@ -61,8 +61,7 @@ object Main extends App {
 			.setContents(select, select)
 	}
 	
-	/** Processes the arguments passed through the mini console mode.
-	 */
+	/** Processes the arguments passed through the mini console mode. */
 	def processArgs(args: List[String]): Unit = args match {
 		case Nil => 
 			tick
@@ -87,20 +86,16 @@ object Main extends App {
 			
 		case "remove" :: Path(dir) :: rest =>
 			val abs = new File(dir).getAbsolutePath
-		//	watchers.remove(abs).fold[Unit] {
-		//		Logger.error(s"No watch for directory $abs found.")
-		//	} { listen =>
-		//		listen.purge
-		//		Logger.info("Watch succesfully removed")
-		//	}
+			tracker ! RemoveCmd(abs)
 			processArgs(rest)
 			
 		case "all" :: rest =>
 			println("")
-		//	watchers.values.foreach { w => compiler.compileAll(w.dirName) }
+			tracker ! CompAllCmd
 			processArgs(rest)
 		
 		case "chars" :: rest =>
+			tracker ! CharsCountCmd
 		//	val names = watchers.values.flatMap { w => w.fileNames }.toList
 			
 		/*	val statsStr = Stats.charCount(names)
@@ -112,6 +107,7 @@ object Main extends App {
 			processArgs(rest)
 			
 		case "chars-recommend" :: n :: rest if(n.forall{ _.isDigit }) =>
+			tracker ! CharsRecommendCmd(n.toInt)
 		/*	val names = watchers.values.flatMap {w => w.fileNames}.toList
 			val stats = Stats
 				.recommendChars(names, n.toInt)
@@ -121,12 +117,11 @@ object Main extends App {
 				
 			toClipboard("[" + charCombos + "]")
 			Logger.info("Recommended combination: " + stats.mkString(", "))*/
+			processArgs(rest)
 			
 		case "exit" :: rest =>
-			
-		//	watchers.values.foreach { _.purge }
 			tracker ! PoisonPill
-			system.awaitTermination()
+			system.shutdown()
 			Logger.info("Exiting...")
 			
 			// Application shuts down naturally (no System.exit(0))
