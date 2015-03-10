@@ -8,10 +8,6 @@ which depend on that include, all the way until it finds the mains and
 StartingConditional files which depended on that modified file, to then compile those
 specific files.
 
-# Known Issues
-Currently, due to how text editors work, saving changes to a file will trigger the 
-change event more than once.
-
 # Commands
 * `watch <directory>` will restart the watcher and will check for changes and 
 recompile the files if needed. Argument may be quoted if there are spaces in the 
