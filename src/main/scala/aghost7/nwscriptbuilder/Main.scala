@@ -2,8 +2,7 @@ package aghost7.nwscriptbuilder
 
 import java.nio.file._
 import java.io.File
-import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
+
 import Console._
 import scala.collection.mutable.{Map => MMap}
 import scala.collection.JavaConversions._
@@ -22,7 +21,7 @@ object Path {
 
 /** Application main, responsible for parsing arguments.
  */
-object Main extends App {
+object Main extends App with UXControls {
 	
 	val system = ActorSystem("NwScriptBuilder")
 	
@@ -48,26 +47,15 @@ object Main extends App {
 	
 	val argPat = """(["][\\A-z0-9\/ ]+["])|([ ]?[\\A-z0-9\/-]+[ ])|([\\A-z0-9\/-]+)""".r
 	
-	def tick = {
-		print("> ")
-		flush
-	}
-	
-	def toClipboard(s: String) {
-		val select = new StringSelection(s)
-		Toolkit
-			.getDefaultToolkit
-			.getSystemClipboard
-			.setContents(select, select)
-	}
-	
 	/** Processes the arguments passed through the mini console mode. */
 	def processArgs(args: List[String]): Unit = args match {
 		case Nil => 
-			tick
 			val input = readLine
 			val consArgs = argPat.findAllMatchIn(input).map { _.toString.trim }
-			if(consArgs.isEmpty) println("")
+			if(consArgs.isEmpty) {
+				println("")
+				tick
+			}
 			processArgs(consArgs.toList)
 			
 		case "clear" :: rest =>
@@ -75,13 +63,14 @@ object Main extends App {
 			processArgs(rest)
 			
 		case "watch" :: Path(dir) :: rest =>
-				val dirFile = new File(dir)
-				if(dirFile.exists) {
-					val path = dirFile.getAbsolutePath
-					tracker ! WatchCmd(path, false)
-				} else {
-					Logger.error(s"target $dir does not exist.")
-				}
+			val dirFile = new File(dir)
+			if(dirFile.exists) {
+				val path = dirFile.getAbsolutePath
+				tracker ! WatchCmd(path, false)
+			} else {
+				Logger.error(s"target $dir does not exist.")
+				tick
+			}
 			processArgs(rest)
 			
 		case "remove" :: Path(dir) :: rest =>
@@ -96,27 +85,10 @@ object Main extends App {
 		
 		case "chars" :: rest =>
 			tracker ! CharsCountCmd
-		//	val names = watchers.values.flatMap { w => w.fileNames }.toList
-			
-		/*	val statsStr = Stats.charCount(names)
-				.map { case (char, count) => char + " = " + count }
-				.mkString("\n")
-				
-			Logger.info("-Character stats for watched files-\n" + statsStr)*/
-			
 			processArgs(rest)
 			
 		case "chars-recommend" :: n :: rest if(n.forall{ _.isDigit }) =>
 			tracker ! CharsRecommendCmd(n.toInt)
-		/*	val names = watchers.values.flatMap {w => w.fileNames}.toList
-			val stats = Stats
-				.recommendChars(names, n.toInt)
-			val charCombos = stats
-				.map { charset => "\"" + charset + "\"" }
-				.mkString(", ")
-				
-			toClipboard("[" + charCombos + "]")
-			Logger.info("Recommended combination: " + stats.mkString(", "))*/
 			processArgs(rest)
 			
 		case "exit" :: rest =>
@@ -134,7 +106,7 @@ object Main extends App {
 	try
 		processArgs(Nil)
 	finally 
-		if(Logger.isDebug)
+		if(Logger.isDebug || Logger.isPrinting)
 			Logger.writer.close()
 		
 

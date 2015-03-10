@@ -17,7 +17,10 @@ class NssTracker(compiler: CompilerProcessor)
 		extends Actor 
 		with NssReading 
 		with DirectoriesMapping 
-		with CharStats {
+		with CharStats 
+		with UXControls {
+	
+	import DirectoriesMapping._
 	
 	implicit val tag = LoggerTag("")
 	
@@ -25,6 +28,8 @@ class NssTracker(compiler: CompilerProcessor)
 	 *  applications, the file system events are buffered.
 	 */
 	var check: List[String] = Nil
+	
+	val checkDelay = Duration(200, TimeUnit.MILLISECONDS)
 	
 	override def preStart() {
 		val filter = Some("[.][nN][sS][sS]$".r)
@@ -38,7 +43,10 @@ class NssTracker(compiler: CompilerProcessor)
 		LoggerTag(watcherName + " :: ")
 	}
 	
+	
+	
 	def receive = {
+		
 		case WatchCmd(path, compAll) =>
 			implicit val tag = mkTag(path)
 			if(directories.contains(path)){
@@ -48,19 +56,22 @@ class NssTracker(compiler: CompilerProcessor)
 					println("")
 					Logger.info("Compiling all.")
 					compiler.compileAll(path)
+				} else {
+					tick
 				}
-				directories += path -> MMap()
+				
+				val base = directoryNssFiles(new java.io.File(path))
+				appendForDirectory(path, base)
 				context.child("scheduler").get ! StartWatch(path) 
 			}
 			
-		
 		case ProcessChangesCmd =>
 			Logger.debug("Update files:\n" + check.distinct.mkString("\n"))
-			
 			val nssGroups = updateAtPaths(check.distinct)
-			
+			// now that they're updated, compile em.
 			for((nss, dirPath, nssDir) <- nssGroups){
 				implicit val tag = mkTag(dirPath)
+				println("")
 				if(nss.isInclude){
 					val depend = findDependees(nss, nssDir.values)
 					compiler.compileList(dirPath, depend)
@@ -68,7 +79,6 @@ class NssTracker(compiler: CompilerProcessor)
 					compiler.compile(nss.path)
 				}
 			}
-			
 			check = Nil
 			
 		case CompAllCmd =>
@@ -77,25 +87,41 @@ class NssTracker(compiler: CompilerProcessor)
 			}
 			
 		case CharsRecommendCmd(processes) =>
-			val cs = recommendChars(directories, processes)
+			val chars = recommendChars(directories, processes)
+			val charCombos = chars
+				.map { charset => "\"" + charset + "\"" }
+				.mkString(", ")
+			toClipboard("[" + charCombos + "]")
+			Logger.info("Recommended combination: " + chars.mkString(", "))
+			tick
 			
 		case CharsCountCmd =>
-			
+			val statsStr = charCount(directories)
+				.sortBy {  _._2 }
+				.map { case (char, count) => char + " = " + count }
+				.mkString("\n")
+				
+			Logger.info("-Character stats for watched files-\n" + statsStr)
+			tick
+				
 		case RemoveCmd(path) =>
+			// TODO
 			
 		case FileCreated(path) =>
 			if(check.isEmpty){
-				val time = Duration(200, TimeUnit.MILLISECONDS)
 				val sys = context.system
-				sys.scheduler.scheduleOnce(time, self, ProcessChangesCmd)(sys.dispatcher)
+				sys
+					.scheduler
+					.scheduleOnce(checkDelay, self, ProcessChangesCmd)(sys.dispatcher)
 			}
 			check = path :: check
 			
 		case FileModified(path) =>
 			if(check.isEmpty){
-				val time = Duration(200, TimeUnit.MILLISECONDS)
 				val sys = context.system
-				sys.scheduler.scheduleOnce(time, self, ProcessChangesCmd)(sys.dispatcher)
+				sys
+					.scheduler
+					.scheduleOnce(checkDelay, self, ProcessChangesCmd)(sys.dispatcher)
 			}
 			check = path :: check
 
@@ -109,8 +135,7 @@ class NssTracker(compiler: CompilerProcessor)
 			
 		case ClearWatch =>
 			context.child("scheduler").get ! ClearWatch
-			
-		case _ =>
+
 	}
 }
 

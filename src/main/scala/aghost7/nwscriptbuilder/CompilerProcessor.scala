@@ -13,7 +13,7 @@ class CompilerProcessor(
 		baseArgs: String, 
 		fullCompCol: List[String],
 		multiSpawn: Boolean,
-		filterOutput: Boolean) {
+		filterOutput: Boolean) extends UXControls {
 	
 	private val compFile = new File(compilerLoc)
 	private val compAbs = compFile.getAbsolutePath
@@ -32,8 +32,7 @@ class CompilerProcessor(
 					Logger.info(line, false)
 				} else if(line.startsWith("Total Execution")) {
 					Logger.info(line, false)
-					print("> ")
-					flush
+					tick
 				} else if(!filterOutput) {
 					Logger.info(line, false)
 				}

@@ -37,11 +37,19 @@ trait DirectoriesMapping {
 		
 		if(dirs.isEmpty) 
 			throw new NoSuchElementException("Could not find directory.")
-		else if(dirs.size > 1)
-			throw new RuntimeException("Cannot resolve change to a single file.")
 		
-		val key = dirs.keys.toSeq(0)
-		(key, dirs(key))
+		// find the most specific directory name, ie the longest match for our file.
+		val longest = dirs.foldLeft(0) { case (l, (dir, nssFiles)) => 
+				if(l < dir.length) dir.length else l
+			}
+		
+		val deepest = dirs.filter { case(dir, nssFiles) => dir.length == longest }
+			
+		if(deepest.size > 1)
+			throw new RuntimeException("Cannot resolve change to a single directory.")
+		
+		val key = deepest.keys.toSeq(0)
+		(key, deepest(key))
 	}
 	
 	def updateAtPaths(files: List[String]): List[(NssFile, String, NssDir)] = 
@@ -56,5 +64,18 @@ trait DirectoriesMapping {
 			(nss, dirPath, nssDir)
 		}
 	
+	/** Appends collection to corresponding directory. Creates a new map if the
+	 *  directory doesn't exist yet.
+	 */
+	def appendForDirectory(dir: String, files: Iterable[NssFile]) {
+		directories.get(dir).fold[Unit] {
+			val base = files.foldLeft(MMap[String, NssFile]()) { (mp, nss) =>
+				mp += nss.path -> nss
+			}
+			directories += dir -> base
+		} { dirMap => 
+			files.foreach { nss => dirMap += nss.path -> nss }
+		}
+	}
 	
 }

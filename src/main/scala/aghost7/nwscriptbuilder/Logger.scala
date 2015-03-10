@@ -8,7 +8,7 @@ case class LoggerTag(name: String)
 object Logger {
 	
 	val debugProp = System.getProperty("aghost7.nwscriptbuilder.debug")
-	val isDebug = true//"true".equalsIgnoreCase(debugProp)
+	val isDebug = "true".equalsIgnoreCase(debugProp)
 	
 	val isPrinting = Conf.get.getBoolean("log-to-file")
 	

@@ -29,14 +29,11 @@ trait NssReading {
 	 *  @param dir is the target directory.
 	 */
 	def directoryNssFiles(dir: java.io.File)
-			(implicit tag: LoggerTag): Seq[(String, NssFile)] = {
+			(implicit tag: LoggerTag): Seq[NssFile] = {
 		val (dirs, nondirs) = dir.listFiles.partition { _.isDirectory }
 		val nssFiles = nondirs
 			.filter{ _.getName.toLowerCase.endsWith(".nss") }
-			.map { fl => 
-				val nss = NssFile.fromFile(fl)
-				nss.path -> nss
-			}
+			.map { fl => NssFile.fromFile(fl) }
 		dirs.map(directoryNssFiles).flatten.toSeq ++ nssFiles
 	}
 	

@@ -28,8 +28,6 @@ trait CharStats {
 			val charCount = name(0) -> newCount
 			total + charCount
 		}.toList
-		.sortBy {  _._2 }
-		
 		
 	/** This goes even further and recommends you a specific combination of 
 	 *  characters to use for splitting across the specified number of processes.
@@ -51,9 +49,10 @@ trait CharStats {
 		
 		rest.foldLeft(sHighest) { case (result, (char, count)) => 
 			// find the best candidate for adding.
-			val (smChar, smCount) = result.foldLeft((" ", Int.MaxValue)) { case(pick, iter) =>
-				if(iter._2 < pick._2) iter
-				else pick
+			val (smChar, smCount) = result.foldLeft((" ", Int.MaxValue)) { 
+				case(pick, iter) =>
+					if(iter._2 < pick._2) iter
+					else pick
 			}
 			
 			val diff = result.filterNot { case (s, n) => s == smChar }
