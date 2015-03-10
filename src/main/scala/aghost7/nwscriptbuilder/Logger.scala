@@ -8,7 +8,7 @@ case class LoggerTag(name: String)
 object Logger {
 	
 	val debugProp = System.getProperty("aghost7.nwscriptbuilder.debug")
-	val isDebug = "true".equalsIgnoreCase(debugProp)
+	val isDebug = true//"true".equalsIgnoreCase(debugProp)
 	
 	val isPrinting = Conf.get.getBoolean("log-to-file")
 	
@@ -21,8 +21,6 @@ object Logger {
 		if(!file.exists()) file.createNewFile()
 		new PrintWriter(new BufferedWriter(new FileWriter(file, true)))
 	}
-	
-	type LoggerPrepend = Option[LoggerTag]
 	
 	def debug(s: String, newLine: Boolean = true)(implicit tag: LoggerTag) {
 		if(isDebug){

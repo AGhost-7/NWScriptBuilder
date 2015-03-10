@@ -1,3 +1,4 @@
- void Foo()
+void Foo()
 {
-} 
+	string foo = ""; 
+}    

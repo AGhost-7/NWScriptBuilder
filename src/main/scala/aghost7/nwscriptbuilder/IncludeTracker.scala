@@ -15,7 +15,7 @@ trait IncludeTracker {
 	private val files = MMap[String, NssFile]()
 	
 	
-	private val includePattern = """^(\s*#include\s+["])([A-z0-9_]+)""".r
+	//private val includePattern = """^(\s*#include\s+["])([A-z0-9_]+)""".r
 	
 	/** Evaluates what includes the file has.
 	 *  

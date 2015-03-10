@@ -7,6 +7,7 @@ import java.awt.datatransfer.StringSelection
 import Console._
 import scala.collection.mutable.{Map => MMap}
 import scala.collection.JavaConversions._
+import akka.actor.{ActorSystem,PoisonPill}
 
 
 /** Extracts full path string from arguments in pattern match.
@@ -23,7 +24,7 @@ object Path {
  */
 object Main extends App {
 	
-	val watchers = MMap[String, FileSystemWatcher]()
+	val system = ActorSystem("NwScriptBuilder")
 	
 	implicit val tag = LoggerTag("")
 	
@@ -39,9 +40,11 @@ object Main extends App {
 	val compiler = CompilerProcessor.fromConfig(conf.getConfig("compiler"))
 	val compAll = conf.getBoolean("watchers.startup.full-compile")
 	
+	val tracker = system.actorOf(NssTracker.props(compiler))
 	conf.getStringList("watchers.startup.directories").foreach { dir =>
-		watchers += dir -> new FileSystemWatcher(dir, compiler, compAll)
+		tracker ! WatchCmd(dir, compAll)
 	}
+	
 	
 	val argPat = """(["][\\A-z0-9\/ ]+["])|([ ]?[\\A-z0-9\/-]+[ ])|([\\A-z0-9\/-]+)""".r
 	
@@ -69,51 +72,47 @@ object Main extends App {
 			processArgs(consArgs.toList)
 			
 		case "clear" :: rest =>
-			watchers.values.foreach { _.purge }
-			watchers.clear
+			tracker ! ClearWatch
 			processArgs(rest)
 			
 		case "watch" :: Path(dir) :: rest =>
-			if(watchers.get(dir).isDefined){
-				Logger.error(s"watch is already active for directory $dir")
-			} else {
 				val dirFile = new File(dir)
 				if(dirFile.exists) {
 					val path = dirFile.getAbsolutePath
-					watchers += dir -> new FileSystemWatcher(path, compiler, false)
+					tracker ! WatchCmd(path, false)
 				} else {
 					Logger.error(s"target $dir does not exist.")
 				}
-			}
 			processArgs(rest)
 			
 		case "remove" :: Path(dir) :: rest =>
 			val abs = new File(dir).getAbsolutePath
-			watchers.remove(abs).fold[Unit] {
-				Logger.error(s"No watch for directory $abs found.")
-			} { listen =>
-				listen.purge
-				Logger.info("Watch succesfully removed")
-			}
+		//	watchers.remove(abs).fold[Unit] {
+		//		Logger.error(s"No watch for directory $abs found.")
+		//	} { listen =>
+		//		listen.purge
+		//		Logger.info("Watch succesfully removed")
+		//	}
 			processArgs(rest)
 			
 		case "all" :: rest =>
 			println("")
-			watchers.values.foreach { w => compiler.compileAll(w.dirName) }
+		//	watchers.values.foreach { w => compiler.compileAll(w.dirName) }
 			processArgs(rest)
 		
 		case "chars" :: rest =>
-			val names = watchers.values.flatMap { w => w.fileNames }.toList
-			val statsStr = Stats.charCount(names)
+		//	val names = watchers.values.flatMap { w => w.fileNames }.toList
+			
+		/*	val statsStr = Stats.charCount(names)
 				.map { case (char, count) => char + " = " + count }
 				.mkString("\n")
 				
-			Logger.info("-Character stats for watched files-\n" + statsStr)
+			Logger.info("-Character stats for watched files-\n" + statsStr)*/
 			
 			processArgs(rest)
 			
 		case "chars-recommend" :: n :: rest if(n.forall{ _.isDigit }) =>
-			val names = watchers.values.flatMap {w => w.fileNames}.toList
+		/*	val names = watchers.values.flatMap {w => w.fileNames}.toList
 			val stats = Stats
 				.recommendChars(names, n.toInt)
 			val charCombos = stats
@@ -121,11 +120,15 @@ object Main extends App {
 				.mkString(", ")
 				
 			toClipboard("[" + charCombos + "]")
-			Logger.info("Recommended combination: " + stats.mkString(", "))
+			Logger.info("Recommended combination: " + stats.mkString(", "))*/
 			
 		case "exit" :: rest =>
-			watchers.values.foreach { _.purge }
+			
+		//	watchers.values.foreach { _.purge }
+			tracker ! PoisonPill
+			system.awaitTermination()
 			Logger.info("Exiting...")
+			
 			// Application shuts down naturally (no System.exit(0))
 		
 		case skip :: rest =>
