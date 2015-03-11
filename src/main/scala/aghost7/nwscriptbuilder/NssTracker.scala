@@ -68,8 +68,19 @@ class NssTracker(compiler: CompilerProcessor)
 		case ProcessChangesCmd =>
 			Logger.debug("Update files:\n" + check.distinct.mkString("\n"))
 			val nssGroups = updateAtPaths(check.distinct)
-			// now that they're updated, compile em.
-			for((nss, dirPath, nssDir) <- nssGroups){
+			// group together to process what you can into one.
+			nssGroups.groupBy { _._2 }.foreach { case(path, group) =>
+				val ls = group.foldLeft[List[NssFile]](Nil) { case(files, (nss, dirPath, nssDir)) =>
+					if(nss.isInclude){
+						files ++: findDependees(nss, nssDir.values)
+					} else {
+						nss :: files
+					}
+				}
+				compiler.compileList(path, ls.distinct)
+			}
+			
+			/*for((nss, dirPath, nssDir) <- nssGroups){
 				implicit val tag = mkTag(dirPath)
 				println("")
 				if(nss.isInclude){
@@ -78,7 +89,7 @@ class NssTracker(compiler: CompilerProcessor)
 				} else {
 					compiler.compile(nss.path)
 				}
-			}
+			}*/
 			check = Nil
 			
 		case CompAllCmd =>
