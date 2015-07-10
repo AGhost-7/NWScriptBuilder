@@ -41,7 +41,7 @@ trait FilePartitioner {
 			val matches = chars.flatMap { char =>
 				val c = "" + char
 				if(fileNames.exists { _.startsWith(c) })
-					Some("\"" + absPath + "/" + char + "*.nss\"")
+					Some(absPath + "/" + char + "*.NSS")
 				else
 					None
 			}
@@ -72,7 +72,7 @@ class CompilerProcessor(
 		// How the load is seperated to compile in parallel
 		val parChars: List[String],
 		multiSpawn: Boolean,
-		filterOutput: Boolean,
+		keepOutput: String,
 		installDir: Option[String]
 		) extends UXControls with FilePartitioner {
 
@@ -83,25 +83,62 @@ class CompilerProcessor(
 	private val compDir = compFile.getParentFile()
 	private val compName = compFile.getName
 
+
 	/** Logging pipe. */
-	private def loggingPipe(implicit tag: LoggerTag) =
-		ProcessLogger({ line => 
-			if(!line.isEmpty) {
-				if(line.contains("Error:")
-						|| line.contains("error(s);")){
-					Logger.error(line, false)
-				} else if(line.startsWith("Compiling")){
-					Logger.info(line, false)
-				} else if(line.startsWith("Total Execution")) {
-					Logger.info(line, false)
-					tick
-				} else if(!filterOutput) {
-					Logger.info(line, false)
-				}
-			}
-		}, { line => 
-			Logger.error(line)
-		})
+	private def loggingPipe(implicit tag: LoggerTag) = {
+
+		def isError(line: String): Boolean =
+			line.contains("Error:") || line.contains("error(s);")
+		def isWarn(line: String): Boolean = line.contains("Warning:")
+		def isComp(line: String): Boolean = line.startsWith("Compiling:")
+
+		val error = Logger.error(_: String, false)
+		val info = Logger.info(_: String, false)
+
+		val stream: String => Unit = keepOutput match {
+			case "all" =>
+				line => if(isError(line)) error(line) else info(line)
+			case "error-warn-comp" =>
+				line =>
+					if(isError(line)) error(line)
+					else if(isWarn(line) || isComp(line)) info(line)
+			case "error-warn" =>
+				line =>
+					if(isError(line)) error(line) else if(isWarn(line)) info(line)
+			case "error-comp" =>
+				line =>
+					if(isError(line)) error(line) else if(isComp(line)) info(line)
+			case "error" =>
+				line => if(isError(line)) error(line)
+			case "none" =>
+				_ =>
+		}
+
+		val errStream: String => Unit = keepOutput match {
+			case "" => _ =>
+			case _ => line => Logger.error(line)
+		}
+
+		ProcessLogger(stream, errStream)
+
+//		ProcessLogger({ line =>
+//			if (!line.isEmpty) {
+//				if (line.contains("Error:")
+//					|| line.contains("error(s);")) {
+//					Logger.error(line, false)
+//				} else if (line.startsWith("Compiling")) {
+//					Logger.info(line, false)
+//				} else if (line.startsWith("Total Execution")) {
+//					Logger.info(line, false)
+//					tick
+//				} else if (!filterOutput) {
+//					Logger.info(line, false)
+//				}
+//			}
+//		}, { line =>
+//			Logger.error(line)
+//		})
+	}
 
 	/** Returns the constructed command to use for the compiler. */
 	def batchCommand(dirName: String, files: Seq[String]): Seq[String] = {
@@ -122,7 +159,7 @@ class CompilerProcessor(
 
 		val withInstall = installDir.fold { Seq.empty[String] } { dir => Seq("\n", dir) }
 
-		Seq(compAbs, baseArgs) ++ inc ++ withInstall ++ Seq(file)
+		Seq(compAbs, baseArgs) ++ inc ++ withInstall ++ Seq("-y", file)
 	}
 
 	def runBatchCommand(dirName: String, files: Seq[String])
@@ -187,8 +224,12 @@ object CompilerProcessor {
 		val letters: List[String] = 
 			if(multiSpawn) conf.getStringList("process-assignments").toList
 			else Nil
-		val filter = conf.getBoolean("filter-output")
+		val filter = conf.getString("keep-output")
 
+		filter match {
+			case "all" | "none" | "error-comp" | "error-comp" | "error-warn-comp" | "error" => // nothing
+			case f => throw new IllegalArgumentException(s"keep-output option $f is invalid")
+		}
 
 		val installDir =
 			try Some(conf.getString("install-directory"))
