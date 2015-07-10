@@ -59,8 +59,12 @@ class NssTracker(compiler: CompilerProcessor)
 				} else {
 					tick
 				}
-				
+
+				if(Logger.isDebug)
+					Logger.debug(s"Watch command for $path received.")(LoggerTag("NssTracker :: "))
+
 				val base = directoryNssFiles(new java.io.File(path))
+
 				appendForDirectory(path, base)
 				context.child("scheduler").get ! StartWatch(path) 
 			}

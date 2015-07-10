@@ -89,10 +89,12 @@ object NssFile {
 	
 	/** Uses the scala.io.Source to create a NssFile instance
 	 *  
-	 *  @param fl is the target file.
+	 *  @param file is the target file.
 	 */
 	def fromFile(file: File)(implicit tag: LoggerTag): NssFile = {
+
 		val path = file.getAbsolutePath()
+		Logger.debug(s"Opening file: $path")
 		// Will be used later to resolve include changes.
 		val name = file.getName().replace(".nss", "").replace(".NSS", "")
 		val src = io.Source.fromFile(path)

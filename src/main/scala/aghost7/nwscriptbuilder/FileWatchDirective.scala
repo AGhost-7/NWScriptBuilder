@@ -37,7 +37,7 @@ class FileWatchScheduler(filter: Option[Regex]) extends Actor {
 		
 		case StartWatch(path) =>
 			Logger.debug("Starting watch for " + path)
-			var ls =  watcher.listening :+ Paths.get(path)
+			val ls =  watcher.listening :+ Paths.get(path)
 			watcher.listening = ls
 			watcher.reboot
 			
@@ -128,6 +128,7 @@ class FileWatchProcessor(parent: ActorRef, filter: Option[Regex])
 	def reboot = t.interrupt()
 	
 	def stop = {
+		Logger.debug("Stop requested")
 		active = false
 		t.interrupt()
 	}

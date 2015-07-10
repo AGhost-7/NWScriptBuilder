@@ -40,9 +40,9 @@ object Main extends App with UXControls {
 	val compAll = conf.getBoolean("watchers.startup.full-compile")
 	
 	val tracker = system.actorOf(NssTracker.props(compiler))
-	conf.getStringList("watchers.startup.directories").foreach { dir =>
-		tracker ! WatchCmd(new File(dir).getAbsolutePath(), compAll)
-	}
+	conf
+		.getStringList("watchers.startup.directories")
+		.foreach { tracker ! WatchCmd(_, compAll) }
 	
 	
 	val argPat = """(["][\\A-z0-9\/ ]+["])|([ ]?[\\A-z0-9\/-]+[ ])|([\\A-z0-9\/-]+)""".r

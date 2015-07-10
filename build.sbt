@@ -18,19 +18,26 @@ lazy val wrapUp = taskKey[File](
 	"Puts everything together for uploading application to websites.")
 
 wrapUp := {
+	// List assets
 	val jar = assembly.value
-	val out = target.value / "download.zip"
-	val script = file("scripts/NWScriptBuilder.bat")
+	val bat = file("scripts/NWScriptBuilder.bat")
+	val shell = file("scripts/NWScriptBuilder")
 	val ref = file("src/main/resources/reference.conf")
-	val conf = target.value / "application.conf"
 	val readme = file("readme.md")
-	
-	IO.copyFile(ref, conf)
-	
-	val inputs = Seq(jar, script, conf, readme) x Path.flat
+
+	// transforms
+	val out = target.value / "dist.zip"
+
+	val inputs = Seq(
+			shell -> "NWScriptBuilder",
+			bat -> "NWScriptBuilder.bat",
+			jar -> "_NWScriptBuilder/NWScriptBuilder.jar",
+			ref -> "_NWScriptBuilder/application.conf",
+			readme -> "_NWScriptBuilder/readme.md")
+
 	IO.zip(inputs, out)
-	
-	IO.delete(Seq(jar, conf))
-	
+
+	IO.delete(Seq(jar))
+
 	out
 }

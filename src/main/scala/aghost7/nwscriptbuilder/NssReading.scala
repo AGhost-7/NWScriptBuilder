@@ -34,6 +34,7 @@ trait NssReading {
 		val nssFiles = nondirs
 			.filter{ _.getName.toLowerCase.endsWith(".nss") }
 			.map { fl => NssFile.fromFile(fl) }
+		Logger.debug(s"Found ${dirs.length} directories and ${nssFiles.length} NSS files")
 		dirs.map(directoryNssFiles).flatten.toSeq ++ nssFiles
 	}
 	
