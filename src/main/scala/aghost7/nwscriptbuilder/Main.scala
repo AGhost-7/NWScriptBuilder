@@ -1,10 +1,8 @@
 package aghost7.nwscriptbuilder
 
-import java.nio.file._
 import java.io.File
 
 import Console._
-import scala.collection.mutable.{Map => MMap}
 import scala.collection.JavaConversions._
 import akka.actor.{ActorSystem,PoisonPill}
 

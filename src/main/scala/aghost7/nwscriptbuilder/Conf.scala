@@ -3,7 +3,6 @@ package aghost7.nwscriptbuilder
 import java.io.File
 
 import com.typesafe.config._
-import scala.collection.JavaConversions._
 
 object Conf {
 	

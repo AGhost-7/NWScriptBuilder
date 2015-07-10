@@ -2,7 +2,6 @@ package aghost7.nwscriptbuilder
 
 import akka.actor.{Actor,Props}
 import scala.concurrent.duration.Duration
-import scala.collection.mutable.{Map => MMap}
 import java.util.concurrent.TimeUnit
 
 sealed trait Cmd
@@ -19,8 +18,6 @@ class NssTracker(compiler: CompilerProcessor)
 		with DirectoriesMapping 
 		with CharStats 
 		with UXControls {
-	
-	import DirectoriesMapping._
 	
 	implicit val tag = LoggerTag("")
 	
@@ -83,17 +80,7 @@ class NssTracker(compiler: CompilerProcessor)
 				}
 				compiler.compileList(path, ls.distinct)
 			}
-			
-			/*for((nss, dirPath, nssDir) <- nssGroups){
-				implicit val tag = mkTag(dirPath)
-				println("")
-				if(nss.isInclude){
-					val depend = findDependees(nss, nssDir.values)
-					compiler.compileList(dirPath, depend)
-				} else {
-					compiler.compile(nss.path)
-				}
-			}*/
+
 			check = Nil
 			
 		case CompAllCmd =>

@@ -1,7 +1,5 @@
 package aghost7.nwscriptbuilder
 
-import scala.collection.mutable.{Map => MMap}
-
 trait CharStats {
 	
 	import DirectoriesMapping._
@@ -17,7 +15,7 @@ trait CharStats {
 	
 	/** Takes a list of file names and counts their first letters.
 	 *  
-	 *  @param fileNames is a list of file names. It musn't be a list of paths, 
+	 *  @param directories is a list of file names. It musn't be a list of paths,
 	 *  just the name (e.g., foobar.txt).
 	 *  @return A list of chars with the number of times it is in the first 
 	 *  letter

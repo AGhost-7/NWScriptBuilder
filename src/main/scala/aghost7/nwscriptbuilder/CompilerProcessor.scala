@@ -120,24 +120,6 @@ class CompilerProcessor(
 		}
 
 		ProcessLogger(stream, errStream)
-
-//		ProcessLogger({ line =>
-//			if (!line.isEmpty) {
-//				if (line.contains("Error:")
-//					|| line.contains("error(s);")) {
-//					Logger.error(line, false)
-//				} else if (line.startsWith("Compiling")) {
-//					Logger.info(line, false)
-//				} else if (line.startsWith("Total Execution")) {
-//					Logger.info(line, false)
-//					tick
-//				} else if (!filterOutput) {
-//					Logger.info(line, false)
-//				}
-//			}
-//		}, { line =>
-//			Logger.error(line)
-//		})
 	}
 
 	/** Returns the constructed command to use for the compiler. */

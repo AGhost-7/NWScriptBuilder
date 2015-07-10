@@ -2,7 +2,6 @@ package aghost7.nwscriptbuilder
 
 import scala.annotation._
 import java.io.File
-import java.net.URL
 
 /** Entirely immutable representation of what we need to know about the nss 
  *  file. Updates to the file will replace the instance, instead of modifying 
