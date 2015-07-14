@@ -91,7 +91,6 @@ object NssFile {
 	 *  @param file is the target file.
 	 */
 	def fromFile(file: File)(implicit tag: LoggerTag): NssFile = {
-
 		val path = file.getAbsolutePath()
 		Logger.debug(s"Opening file: $path")
 		// Will be used later to resolve include changes.

@@ -30,6 +30,7 @@ trait NssReading {
 	 */
 	def directoryNssFiles(dir: java.io.File)
 			(implicit tag: LoggerTag): Seq[NssFile] = {
+
 		val (dirs, nondirs) = dir.listFiles.partition { _.isDirectory }
 		val nssFiles = nondirs
 			.filter{ _.getName.toLowerCase.endsWith(".nss") }

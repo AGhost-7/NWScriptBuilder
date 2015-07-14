@@ -115,7 +115,7 @@ class CompilerProcessor(
 		}
 
 		val errStream: String => Unit = keepOutput match {
-			case "" => _ =>
+			case "none" => _ =>
 			case _ => line => Logger.error(line)
 		}
 
